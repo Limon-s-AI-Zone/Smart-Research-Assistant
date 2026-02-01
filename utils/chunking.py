@@ -61,3 +61,54 @@ class TextChunker:
             return True
 
         return False
+
+    def chunk_text(self, text: str, metadata: Dict) -> List[Dict]:
+        """Split text into overlapping chunks, filtering out citations"""
+        text = self.clean_text(text)
+        words = text.split()
+
+        chunks: List[Dict] = []
+        start = 0
+        chunk_id = 0
+
+        while start < len(words):
+            end = start + self.chunk_size
+            chunk_words = words[start:end]
+            chunk_text = " ".join(chunk_words)
+
+            if len(chunk_words) < 50 and chunk_id > 0:
+                break
+
+            self.total_chunks += 1
+
+            if self.is_mostly_citations(chunk_text):
+                self.citations_skipped += 1
+                start += self.chunk_size - self.overlap
+                continue
+
+            if self.is_low_information(chunk_text):
+                self.citations_skipped += 1
+                start += self.chunk_size - self.overlap
+                continue
+
+            chunks.append(
+                {
+                    "chunk_id": f"{metadata['filename']}_chunk_{chunk_id}",
+                    "text": chunk_text,
+                    "metadata": {
+                        **metadata,
+                        "chunk_index": chunk_id,
+                        "word_count": len(chunk_words),
+                        "start_word": start,
+                        "end_word": min(end, len(words)),
+                    },
+                }
+            )
+
+            start += self.chunk_size - self.overlap
+            chunk_id += 1
+
+            if end >= len(words):
+                break
+
+        return chunks
