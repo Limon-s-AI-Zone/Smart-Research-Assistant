@@ -20,7 +20,7 @@ class TextChunker:
     def clean_text(self, text: str) -> str:
         """Clean and normalize text"""
         text = re.sub(r"\s+", " ", text)
-        text = re.sub(r"[^\w\s.,!?;:()\-']", "", text)
+        text = re.sub(r"[^\w\s.,!?;:()\-\']", "", text)
         return text.strip()
 
     def is_mostly_citations(self, text: str) -> bool:
@@ -112,3 +112,73 @@ class TextChunker:
                 break
 
         return chunks
+
+    def chunk_document(self, document: Dict) -> List[Dict]:
+        """Chunk a complete document"""
+        metadata = {
+            "filename": document["filename"],
+            "filepath": document["filepath"],
+            "num_pages": document["num_pages"],
+        }
+        return self.chunk_text(document["full_text"], metadata)
+
+    def chunk_all_documents(self, documents: List[Dict]) -> List[Dict]:
+        """Chunk multiple documents"""
+        all_chunks: List[Dict] = []
+
+        print("\n🔪 Chunking documents...")
+        print(f"  Chunk size: {self.chunk_size} words")
+        print(f"  Overlap: {self.overlap} words")
+        print("  Citation filtering: ENABLED")
+        print("-" * 50)
+
+        self.citations_skipped = 0
+        self.total_chunks = 0
+
+        for doc in documents:
+            print(f"📄 {doc['filename']}...")
+            chunks = self.chunk_document(doc)
+            all_chunks.extend(chunks)
+            print(f"  ✓ Created {len(chunks)} chunks")
+
+        print("-" * 50)
+        print("\n📊 Chunking Statistics:")
+        print(f"  Total potential chunks: {self.total_chunks}")
+        print(f"  Citation/low-info chunks skipped: {self.citations_skipped}")
+        print(f"  High-quality chunks kept: {len(all_chunks)}")
+        print(f"  Retention rate: {len(all_chunks) / max(self.total_chunks, 1) * 100:.1f}%")
+
+        return all_chunks
+
+
+if __name__ == "__main__":
+    from utils.document_loader import DocumentLoader
+
+    print("=" * 50)
+    print("TESTING TEXT CHUNKER WITH CITATION FILTERING")
+    print("=" * 50)
+
+    loader = DocumentLoader()
+    docs = loader.load_all_documents()
+
+    if not docs:
+        print("❌ No documents found. Add PDFs to data/documents/ folder")
+        raise SystemExit(0)
+
+    chunker = TextChunker()
+    chunks = chunker.chunk_all_documents(docs)
+
+    print("\n📊 Summary:")
+    print(f"  Total chunks created: {len(chunks)}")
+
+    if chunks:
+        avg_length = sum(c["metadata"]["word_count"] for c in chunks) / len(chunks)
+        print(f"  Average chunk size: {avg_length:.0f} words")
+
+        print("\n📄 First 3 chunks preview:")
+        for i in range(min(3, len(chunks))):
+            print(f"\n  Chunk {i + 1}:")
+            print(f"  ID: {chunks[i]['chunk_id']}")
+            print(f"  Source: {chunks[i]['metadata']['filename']}")
+            print(f"  Words: {chunks[i]['metadata']['word_count']}")
+            print(f"  Text: {chunks[i]['text'][:150]}...")
