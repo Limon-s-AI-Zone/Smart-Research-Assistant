@@ -46,3 +46,47 @@ class Retriever:
 
         print(f"Retrieved {len(retrieved_chunks)} relevant chunks")
         return retrieved_chunks
+
+    def format_context(self, chunks: List[Dict]) -> str:
+        """Format retrieved chunks as context for LLM"""
+        context_parts: List[str] = []
+
+        for i, chunk in enumerate(chunks, 1):
+            source = chunk["metadata"]["filename"]
+            text = chunk["text"]
+            similarity = chunk["similarity"]
+
+            context_parts.append(
+                f"[Source {i}: {source} (Relevance: {similarity:.2f})]\n{text}\n"
+            )
+
+        return "\n---\n".join(context_parts)
+
+
+if __name__ == "__main__":
+    print("=" * 50)
+    print("TESTING RETRIEVER")
+    print("=" * 50)
+
+    retriever = Retriever()
+
+    test_queries = [
+        "What are transformers?",
+        "What is the attention mechanism?",
+        "How does self-attention work?",
+        "What is Swin Transformer?",
+    ]
+
+    for query in test_queries:
+        print("\n" + "=" * 50)
+        chunks = retriever.retrieve(query, top_k=5)
+
+        print(f"\nResults for: '{query}'")
+        print("-" * 50)
+
+        for i, chunk in enumerate(chunks, 1):
+            print(f"\nResult {i}:")
+            print(f"Source: {chunk['metadata']['filename']}")
+            print(f"Similarity: {chunk['similarity']:.3f}")
+            print(f"Distance: {chunk['distance']:.3f}")
+            print(f"Text preview: {chunk['text'][:150]}...")
