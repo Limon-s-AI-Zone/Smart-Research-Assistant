@@ -53,3 +53,68 @@ class AnswerGenerator:
                 "Ollama is not installed or not available on PATH. "
                 "Install it or configure a different LLM provider."
             )
+
+    def generate_answer(self, query: str, context: str) -> str:
+        """Generate an answer given query and formatted context"""
+        prompt = self._build_prompt(query, context)
+
+        if self.provider == "ollama":
+            return self._call_ollama(prompt)
+
+        # Placeholder for future Groq/Gemini integration
+        return textwrap.dedent(
+            """\
+            LLM provider is not configured correctly.
+            Set LLM_PROVIDER to 'ollama', 'groq', or 'gemini' in config.py and implement the corresponding call.
+            """
+        )
+
+    def ask(self, query: str, top_k: int = config.TOP_K_RESULTS) -> Dict:
+        """Full pipeline: retrieve, format context, generate answer"""
+        chunks = self.retriever.retrieve(query, top_k=top_k)
+
+        if not chunks:
+            return {
+                "query": query,
+                "answer": "No relevant information found in the database.",
+                "sources": [],
+                "num_sources": 0,
+            }
+
+        context = self.retriever.format_context(chunks)
+        answer = self.generate_answer(query, context)
+
+        sources: List[Dict] = []
+        for chunk in chunks:
+            sources.append(
+                {
+                    "filename": chunk["metadata"]["filename"],
+                    "similarity": chunk["similarity"],
+                    "text_preview": chunk["text"][:200],
+                }
+            )
+
+        return {
+            "query": query,
+            "answer": answer,
+            "sources": sources,
+            "num_sources": len(sources),
+        }
+
+
+if __name__ == "__main__":
+    print("=" * 50)
+    print("TESTING ANSWER GENERATOR (REQUIRES LLM)")
+    print("=" * 50)
+
+    generator = AnswerGenerator()
+    test_query = "Explain the self-attention mechanism in transformers."
+    result = generator.ask(test_query)
+
+    print("\nQuestion:")
+    print(test_query)
+    print("\nAnswer:")
+    print(result["answer"])
+    print("\nSources:")
+    for i, src in enumerate(result["sources"], 1):
+        print(f"{i}. {src['filename']} (Similarity: {src['similarity']:.3f})")
