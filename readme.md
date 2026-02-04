@@ -148,5 +148,5 @@ These examples assume your corpus includes the corresponding papers in data/docu
 
 
 ## License
-This project is under MIT lincense
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
